@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# zip -r app.nw index.* node_modules package.json app
+
+zip -r app.nw package.json index.html assets node_modules app

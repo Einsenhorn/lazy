@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html style="width:100%;height:100%;margin:0;">
+    <head lang="en">
+        <meta charset="UTF-8">
+        <title></title>
+    </head>
+    <body style="-webkit-app-region:drag;border:1px solid #F0F;" id="holder">
+        <span style="color:#F0F">hell0 world !</span>
+        <script type="text/javascript">
+            console.log('foo', localStorage.getItem('foo'));
+            localStorage.setItem('foo', 'bar');
+
+//            require('child_process').spawn('C:\\Program Files (x86)\\Putty\\putty.exe', ['basty@192.168.0.215', '-pw', 'UgzSHQU2bf']);
+            var putty_path = 'C:\\Program Files (x86)\\Putty\\putty.exe';
+
+            var path = require('path');
+            var kpio = require('keepass.io');
+            var Lazy = require('./app/Lazy');
+
+            window.ondragover = function(e) { e.preventDefault(); return false };
+            window.ondrop = function(e) { e.preventDefault(); return false };
+
+            var loadKdb = function(databasePath) {
+                var database = new kpio.Database();
+//                var databasePath = e.dataTransfer.files[0].path;//'Y:\\lazy\\Fidesio.kdbx';//'/home/basty/www/lazy/Fidesio.kdbx';
+
+                var roots = [
+                    'Fidesio/fidesio/thot - 192.168.0.210/basty',
+                    'Fidesio/fidesio/shou - 192.168.0.215/basty',
+                    'Fidesio/serveurs/staging - 188.165.222.58'
+                ];
+
+                database.addCredential(new kpio.Credentials.Password('fidesio'));
+                database.loadFile(databasePath, function(err) {
+                    if (err) {
+                        throw err;
+                    }
+
+                    var finder = new Lazy.Finder.KeePass();
+                    var builder = new Lazy.Node.Builder.KeePass();
+                    var rootNode = builder.build(database.getBasicApi().getGroupTree());
+
+                    var i, l, node;
+                    for (i = 0, l = roots.length ; i < l ; i++) {
+                        node = finder.find(roots[i], rootNode);
+                        if (node === null) {
+                            throw new Error('node `' + roots[i] + '`not found');
+                        } else {
+                            node.loadData(database.getBasicApi());
+                            var ssh = node.data['SSH / SFTP'];
+                            console.log(node.data['SSH / SFTP']);
+
+                            var div = document.createElement('div');
+                            div.innerHTML = ssh.username + ':' + ssh.password + '@' + ssh.url;
+                            div.setAttribute('ssh', JSON.stringify(ssh));
+                            document.body.appendChild(div);
+
+                            div.addEventListener("click", function() {
+                                var i = JSON.parse(this.getAttribute('ssh'));
+                                require('child_process').spawn(putty_path, [i.username + '@' + i.url, '-pw', i.password]);
+                            });
+                        }
+                    }
+                });
+            };
+
+            var holder = document.getElementById('holder');
+            holder.ondragover = function () { this.className = 'hover'; return false; };
+            holder.ondragleave = function () { this.className = ''; return false; };
+            holder.ondrop = function (e) {
+                e.preventDefault();
+
+                if (e.dataTransfer.files.length !== 1) {
+                    return false;
+                }
+
+                if (e.dataTransfer.files[0].path.indexOf('kdbx') > 0) {
+                    loadKdb(e.dataTransfer.files[0].path);
+                }
+
+                return false;
+            };
+        </script>
+    </body>
+</html>
